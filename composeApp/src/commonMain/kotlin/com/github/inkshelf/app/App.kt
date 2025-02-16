@@ -1,111 +1,169 @@
 package com.github.inkshelf.app
 
-import ComicSource
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.Button
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import app.cash.zipline.EngineApi
-import app.cash.zipline.Zipline
-import app.cash.zipline.ZiplineManifest
-import app.cash.zipline.loader.DefaultFreshnessCheckerNotFresh
-import app.cash.zipline.loader.LoadResult
-import app.cash.zipline.loader.ManifestVerifier
-import app.cash.zipline.loader.ZiplineLoader
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.get
-import io.ktor.client.request.url
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import org.jetbrains.compose.ui.tooling.preview.Preview
-import org.lighthousegames.logging.logging
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 
-suspend fun loadZiplineManifest(httpClient: HttpClient, manifestUrl: String): ZiplineManifest {
-    val builder = HttpRequestBuilder()
-    builder.url(manifestUrl)
-    val response = httpClient.get(builder)
-
-    if (response.status.value != 200) {
-        throw Exception("Couldn't load manifest")
-    }
-
-    return ZiplineManifest.decodeJson(response.body())
+sealed class Screen(val route: String, val icon: ImageVector, val label: String) {
+    object Library : Screen("library", Icons.Filled.Menu, "Library")
+    object Discover : Screen("discover", Icons.Filled.Search, "Discover")
+    object Downloads : Screen("downloads", Icons.Filled.KeyboardArrowDown, "Downloads")
+    object Settings : Screen("settings", Icons.Filled.Settings, "Settings")
 }
 
-@OptIn(EngineApi::class)
-suspend fun loadComicSource(): ComicSource {
-    val httpClient = HttpClient(CIO) {
-        install(WebSockets) {
+@Composable
+fun BottomNavBar(navController: NavController) {
+    val items = listOf(Screen.Library, Screen.Discover, Screen.Downloads, Screen.Settings)
+
+    NavigationBar {
+        val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+
+        items.forEach { screen ->
+            NavigationBarItem(
+                icon = { Icon(screen.icon, contentDescription = screen.label) },
+                label = { Text(screen.label) },
+                selected = currentRoute == screen.route,
+                onClick = { navController.navigate(screen.route) }
+            )
         }
     }
-    val manifestUrl = "http://localhost:8080/manifest.zipline.json"
-    val manifest = loadZiplineManifest(httpClient, manifestUrl)
-
-    // Create a Zipline instance
-    val zipline = Zipline.create(
-        dispatcher = Dispatchers.Default,
-    )
-
-
-
-    val loader = ZiplineLoader(
-        Dispatchers.IO, ManifestVerifier.NO_SIGNATURE_CHECKS, KtorZiplineHttpClient(
-            httpClient
-        )
-    )
-
-    manifest.modules.entries.forEach { entry ->
-        if (!entry.key.contains("atomic", ignoreCase = true)) {
-            logging().i { "Ignoring ${entry.key}" }
-            return@forEach
-        }
-
-        logging().i { "${entry.key} : ${entry.value}" }
-
-        loader.load(entry.key, DefaultFreshnessCheckerNotFresh, flowOf(manifestUrl)).collect() { result ->
-            when (result) {
-                is LoadResult.Success -> {
-                    logging().i { "Succeeded loading $entry.key" }
-                    result.zipline
-                }
-                is LoadResult.Failure -> error(result.exception.stackTraceToString())
-            }
-        }
-
-
-    }
-
-    // Retrieve the exported object
-    return zipline.take("exampleSource") as ComicSource
 }
+
+
 
 @Composable
 @Preview
 fun App() {
 
     MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            val scope = rememberCoroutineScope()
+        val navController = rememberNavController()
 
-            Button(onClick = {
-                scope.launch {
-                    loadComicSource()
-
-                }
-            }) {
-                Text("Load Comics")
+        Scaffold(
+            bottomBar = { BottomNavBar(navController) }
+        ) { paddingValues ->
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Library.route,
+                modifier = Modifier.padding(paddingValues)
+            ) {
+                composable(Screen.Library.route) { LibraryScreen() }
+                composable(Screen.Discover.route) { DiscoverScreen() }
+                composable(Screen.Downloads.route) { DownloadsScreen() }
+                composable(Screen.Settings.route) { SettingsScreen() }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LibraryScreen() {
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text("Library") })
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // Replace with your comic grid/list
+            Text(
+                text = "Library Screen Content",
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DiscoverScreen() {
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text("Discover") })
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // Replace with your search UI and discover content
+            Text(
+                text = "Discover Screen Content",
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DownloadsScreen() {
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text("Downloads") })
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // Replace with your downloads list UI
+            Text(
+                text = "Downloads Screen Content",
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen() {
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text("Settings") })
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp)
+        ) {
+            // Example setting item
+            Text("Settings Screen Content", style = MaterialTheme.typography.h1)
+            Spacer(modifier = Modifier.height(16.dp))
+            // Add more settings items here
+            Text("Option 1")
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Option 2")
         }
     }
 }

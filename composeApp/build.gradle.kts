@@ -8,7 +8,6 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.zipline)
 }
 
 kotlin {
@@ -38,25 +37,25 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.material3)
         }
         commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material)
-            implementation(compose.ui)
+            api(libs.logging)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
+            implementation(compose.foundation)
+            implementation(compose.material)
+            implementation(compose.material3)
+            implementation(compose.runtime)
+            implementation(compose.ui)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
+            implementation(libs.navigation.compose)
             implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.ktor)
-            implementation(libs.ktor.cio)
-            implementation(libs.zipline)
-            implementation(libs.zipline.loader)
             implementation(libs.ksoup.kotlinx)
             implementation(libs.ksoup.network)
-            implementation(project(":shared"))
-            api(libs.logging)
+            implementation(libs.ktor)
+            implementation(libs.ktor.cio)
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
@@ -95,6 +94,7 @@ android {
 
 dependencies {
     debugImplementation(compose.uiTooling)
+    add("kotlinCompilerPluginClasspath", "app.cash.zipline:zipline-kotlin-plugin:1.19.0")
 }
 
 compose.desktop {
